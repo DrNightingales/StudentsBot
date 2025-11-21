@@ -1,0 +1,10 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "students",
+            "database": "${workspaceFolder:students_crm}/db/students.db"
+        }
+    ]
+}

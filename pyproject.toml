@@ -1,0 +1,19 @@
+[project]
+name = "students-crm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiogram>=3.22.0",
+    "aiosqlite>=0.21.0",
+    "dotenv>=0.9.9",
+    "fastapi[standard]>=0.121.3",
+    "passlib[bcrypt]>=1.7.4",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "single"
