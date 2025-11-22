@@ -27,44 +27,48 @@ async def init_db():
     Returns:
         None
     '''
-    async with sql.connect(DB_PATH) as db:
-        await db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS whitelist (
-                id  INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                invite_code TEXT NOT NULL,
-                used INTEGER NOT NULL DEFAULT 0
-            );
-            '''
-        )
+    try:
+        async with sql.connect(DB_PATH) as db:
+            await db.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS whitelist (
+                    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    invite_code TEXT NOT NULL,
+                    used INTEGER NOT NULL DEFAULT 0
+                );
+                '''
+            )
 
-        await db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                tg_id INTEGER NOT NULL UNIQUE,
-                tg_username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            '''
-        )
-        await db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS registration_tokens (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                token TEXT NOT NULL UNIQUE,
-                tg_username TEXT NOT NULL,
-                tg_id INTEGER NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME,
-                used INTEGER NOT NULL DEFAULT 0
-            );
-            '''
-        )
-        await db.commit()
+            await db.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    tg_id INTEGER NOT NULL UNIQUE,
+                    tg_username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                '''
+            )
+            await db.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS registration_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token TEXT NOT NULL UNIQUE,
+                    tg_username TEXT NOT NULL,
+                    tg_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME,
+                    used INTEGER NOT NULL DEFAULT 0
+                );
+                '''
+            )
+            await db.commit()
+            logging.log(level=logging.INFO, msg="DB initialised")
+    except Exception as e:
+        logging.log(level=logging.ERROR, msg=e)
 
 
 async def get_invited_useres() -> list[Invite]:
@@ -104,7 +108,7 @@ async def register_user(username: str, password_hash: str, token: str) -> Result
                 (username, tg_id, tg_username, password_hash),
             )
             await db.execute('UPDATE whitelist SET used = 1 WHERE username = ?', (tg_username,))
-            await db.execute('UPDATE registration_tokens SET used = 1 WHERE token = ?', (token,))
+            await db.execute('DELETE FROM registration_tokens WHERE token = ?', (token,))
             await db.commit()
         except Exception as exc:
             logging.log(level=logging.ERROR, msg=exc)
@@ -126,8 +130,7 @@ async def validate_token(token: str) -> tuple[str, int] | None:
         rows = await db.execute_fetchall(
             '''
             SELECT tg_username, tg_id
-            FROM registration_tokens
-            WHERE token = ?
+            FROM registration_tokens WHERE token = ?
               AND used = 0
               AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
             ''',

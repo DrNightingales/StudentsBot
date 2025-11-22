@@ -2,21 +2,25 @@ import os
 import sys
 from typing import Any
 
-import aiosqlite
-import sqlite3
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from asyncio import to_thread
 
 from constants import *
-from db.db import register_user
+from system_users import create_student_account
+from db.db import init_db, register_user
 from security import hash_password
 from validate import validate_password, validate_username
 
-app = FastAPI()
+app = FastAPI(debug=DEBUG)
 templates = Jinja2Templates(directory='webform/templates')
+
+
+@app.on_event('startup')
+async def startup_event() -> None:
+    '''Initialise the database schema when the web application starts.'''
+    await init_db()
 
 
 @app.get('/register', response_class=HTMLResponse)
@@ -52,7 +56,7 @@ async def register_post(
     '''Process registration submissions and persist new users.
 
     Args:
-        request (Request): Incoming HTTP request.
+        request (Request): Incoming HTTP, init_db request.
         username (str): Desired username.
         password (str): Password entry.
         password2 (str): Password confirmation.
@@ -79,6 +83,16 @@ async def register_post(
         res = await register_user(username, password_hash, token)
         error = res.message
         success = res.ok
+        if success:
+            await to_thread(
+                create_student_account,
+                username,
+                password,
+                teacher_username=TEACHER_USERNAME,
+                students_group=STUDENTS_GROUP,
+                home_base=STUDENTS_HOME_BASE,
+                default_shell=STUDENT_DEFAULT_SHELL,
+            )
 
     return templates.TemplateResponse(
         'register.html',
