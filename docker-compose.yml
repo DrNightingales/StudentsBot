@@ -6,6 +6,8 @@ services:
     image: students-crm
     container_name: students-crm-bot
     env_file: .env
+    volumes:
+      - db-data:/app/db
     restart: unless-stopped
 
   web:
@@ -17,4 +19,9 @@ services:
       - "8000:8000"
     depends_on:
       - bot
+    volumes:
+      - db-data:/app/db
     restart: unless-stopped
+
+volumes:
+  db-data:

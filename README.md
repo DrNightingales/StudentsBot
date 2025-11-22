@@ -13,6 +13,10 @@ A Telegram-driven invite workflow for managing student registrations. The `stude
   - `ADMIN_ID` – Telegram user ID allowed to run admin commands
   - `DB_PATH` – path to the SQLite database file (e.g., `students.db`)
   - `REGISTRATION_URL_BASE` – base URL of the FastAPI `/register` endpoint (e.g., `https://example.com/register`)
+  - `TEACHER_USERNAME` – Linux account that should have access to every student home (default: `teacher`)
+  - `STUDENTS_GROUP` – shared Unix group for students (default: `students`)
+  - `STUDENTS_HOME_BASE` – base path that will contain student home directories (default: `/home`)
+  - `STUDENT_DEFAULT_SHELL` – shell assigned to student accounts (default: `/bin/bash`)
 
 ## Setup & Run with uv
 
