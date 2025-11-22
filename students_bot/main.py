@@ -1,10 +1,8 @@
 import asyncio
 import logging
-import os
 import sqlite3
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import aiosqlite as sql
 from aiogram import Bot, Dispatcher, F
@@ -15,7 +13,7 @@ from aiogram.types import Message
 
 from constants import *
 from db.db import get_invited_useres, init_db, insert_registrarion_token, validate_token_request
-from sync_utils import generate_invite_code, generate_token_fixed
+from students_bot.sync_utils import generate_invite_code, generate_token_fixed
 
 dp = Dispatcher()
 
