@@ -23,20 +23,33 @@ class Result:
         return self.message
 
 
+async def _with_db(fn, *args, **kwargs):
+    async with sql.connect(DB_PATH) as db:
+        return await fn(db, *args, **kwargs)
+
+
+async def _init_db(db: sql.Connection):
+    try:
+        await db.execute(db_schemas['whitelist'])
+        await db.execute(db_schemas['users'])
+        await db.execute(db_schemas['registration_tokens'])
+        await db.commit()
+    except Exception as e:
+        logging.log(level=logging.ERROR, msg=e)
+
+
 async def init_db():
     """Create required database tables if they do not exist.
 
     Returns:
         None
     """
-    try:
-        async with sql.connect(DB_PATH) as db:
-            await db.execute(db_schemas['whitelist'])
-            await db.execute(db_schemas['users'])
-            await db.execute(db_schemas['registration_tokens'])
-            await db.commit()
-    except Exception as e:
-        logging.log(level=logging.ERROR, msg=e)
+    return await _with_db(_init_db)
+
+
+async def _get_invited_useres(db: sql.Connection) -> list[Invite]:
+    rows = await db.execute_fetchall('SELECT username, invite_code FROM whitelist WHERE used = 0')
+    return [Invite(username=row[0], invite_code=row[1]) for row in rows]
 
 
 async def get_invited_useres() -> list[Invite]:
@@ -45,9 +58,35 @@ async def get_invited_useres() -> list[Invite]:
     Returns:
         list[Invite]: Pending users with their invite codes.
     """
-    async with sql.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall('SELECT username, invite_code FROM whitelist WHERE used = 0')
-        return [Invite(username=row[0], invite_code=row[1]) for row in rows]
+    return await _with_db(_get_invited_useres)
+
+
+async def _register_user(
+    db: sql.Connection,
+    username: str,
+    password_hash: str,
+    token: str,
+) -> Result:
+    tg = await _validate_token(db, token)
+    if not tg:
+        return Result(False, 'Ваш токен не действителен, используйте комманду /register повторно')
+    tg_username, tg_id = tg
+
+    try:
+        await db.execute(
+            """
+                INSERT INTO users (username, tg_id, tg_username, password_hash)
+                VALUES (?, ?, ?, ?)
+                """,
+            (username, tg_id, tg_username, password_hash),
+        )
+        await db.execute('UPDATE whitelist SET used = 1 WHERE username = ?', (tg_username,))
+        await db.execute('DELETE FROM registration_tokens WHERE token = ?', (token,))
+        await db.commit()
+    except Exception as exc:
+        logging.log(level=logging.ERROR, msg=exc)
+        return Result(False, str(exc))
+    return Result(True, None)
 
 
 async def register_user(username: str, password_hash: str, token: str) -> Result:
@@ -61,27 +100,26 @@ async def register_user(username: str, password_hash: str, token: str) -> Result
     Returns:
         Result: Operation outcome and optional message.
     """
-    tg = await validate_token(token)
-    if not tg:
-        return Result(False, 'Ваш токен не действителен, используйте комманду /register повторно')
-    tg_username, tg_id = tg
+    return await _with_db(_register_user, username, password_hash, token)
 
-    async with sql.connect(DB_PATH) as db:
-        try:
-            await db.execute(
-                """
-                INSERT INTO users (username, tg_id, tg_username, password_hash)
-                VALUES (?, ?, ?, ?)
-                """,
-                (username, tg_id, tg_username, password_hash),
-            )
-            await db.execute('UPDATE whitelist SET used = 1 WHERE username = ?', (tg_username,))
-            await db.execute('DELETE FROM registration_tokens WHERE token = ?', (token,))
-            await db.commit()
-        except Exception as exc:
-            logging.log(level=logging.ERROR, msg=exc)
-            return Result(False, str(exc))
-    return Result(True, None)
+
+async def _validate_token(db: sql.Connection, token: str) -> tuple[str, int] | None:
+    db.row_factory = sql.Row
+    rows = tuple(
+        await db.execute_fetchall(
+            """
+            SELECT tg_username, tg_id
+            FROM registration_tokens WHERE token = ?
+              AND used = 0
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            """,
+            (token,),
+        )
+    )
+    if len(rows) > 0:
+        row = rows[0]
+        return (row['tg_username'], row['tg_id'])
+    return None
 
 
 async def validate_token(token: str) -> tuple[str, int] | None:
@@ -93,23 +131,25 @@ async def validate_token(token: str) -> tuple[str, int] | None:
     Returns:
         tuple[str, int] | None: Telegram username and id if valid, otherwise None.
     """
-    async with sql.connect(DB_PATH) as db:
-        db.row_factory = sql.Row
-        rows = tuple(
-            await db.execute_fetchall(
-                """
-            SELECT tg_username, tg_id
-            FROM registration_tokens WHERE token = ?
-              AND used = 0
-              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+    return await _with_db(_validate_token, token)
+
+
+async def _insert_registrarion_token(
+    db: sql.Connection,
+    tg_username: str,
+    tg_id: int,
+    token: str,
+    grace_period: int = 600,
+):
+    expires_at = f'+{grace_period} seconds'
+    await db.execute(
+        """
+            INSERT INTO registration_tokens (token, tg_username, tg_id, expires_at)
+            VALUES (?, ?, ?, datetime('now', ?))
             """,
-                (token,),
-            )
-        )
-        if len(rows) > 0:
-            row = rows[0]
-            return (row['tg_username'], row['tg_id'])
-    return None
+        (token, tg_username, tg_id, expires_at),
+    )
+    await db.commit()
 
 
 async def insert_registrarion_token(tg_username: str, tg_id: int, token: str, grace_period: int = 600):
@@ -124,16 +164,27 @@ async def insert_registrarion_token(tg_username: str, tg_id: int, token: str, gr
     Returns:
         None
     """
-    expires_at = f'+{grace_period} seconds'
-    async with sql.connect(DB_PATH) as db:
-        await db.execute(
+    return await _with_db(_insert_registrarion_token, tg_username, tg_id, token, grace_period)
+
+
+async def _validate_token_request(
+    db: sql.Connection,
+    tg_username: str,
+    invite_code: str,
+) -> Result:
+    rows = tuple(
+        await db.execute_fetchall(
             """
-            INSERT INTO registration_tokens (token, tg_username, tg_id, expires_at)
-            VALUES (?, ?, ?, datetime('now', ?))
+            SELECT used FROM whitelist WHERE (username = ? AND invite_code = ?)
             """,
-            (token, tg_username, tg_id, expires_at),
+            (tg_username, invite_code),
         )
-        await db.commit()
+    )
+    if len(rows) == 0:
+        return Result(False, 'Неверный пригласительный код или ваш пользователь не находится в белом списке.')
+    if rows[0][0] != 0:
+        return Result(False, 'Вы уже зарегестрированы.')
+    return Result(True, 'Регистрация разрешена')
 
 
 async def validate_token_request(tg_username: str, invite_code: str) -> Result:
@@ -146,32 +197,26 @@ async def validate_token_request(tg_username: str, invite_code: str) -> Result:
     Returns:
         Result: Validation outcome.
     """
-    async with sql.connect(DB_PATH) as db:
-        rows = tuple(
-            await db.execute_fetchall(
-                """
-            SELECT used FROM whitelist WHERE (username = ? AND invite_code = ?)
-            """,
-                (tg_username, invite_code),
-            )
+    return await _with_db(_validate_token_request, tg_username, invite_code)
+
+
+async def _add_to_whitelist(
+    db: sql.Connection,
+    tg_username: str,
+    invite_code: str,
+) -> Result:
+    try:
+        await db.execute(
+            'INSERT INTO whitelist (tg_username, invite_code) VALUES (?, ?)',
+            (tg_username, invite_code),
         )
-        if len(rows) == 0:
-            return Result(False, 'Неверный пригласительный код или ваш пользователь не находится в белом списке.')
-        if rows[0][0] != 0:
-            return Result(False, 'Вы уже зарегестрированы.')
-        return Result(True, 'Регистрация разрешена')
+        await db.commit()
+    except sqlite3.IntegrityError as e:
+        if 'UNIQUE' in e.sqlite_errorname:
+            return Result(False, f'User {tg_username} is already in the whitelist')
+        logging.log(level=logging.ERROR, msg=f'sqlite3.IntegrityError:{e}')
+    return Result(True, None)
 
 
 async def add_to_whitelist(tg_username: str, invite_code: str) -> Result:
-    async with sql.connect(DB_PATH) as db:
-        try:
-            await db.execute(
-                'INSERT INTO whitelist (tg_username, invite_code) VALUES (?, ?)',
-                (tg_username, invite_code),
-            )
-            await db.commit()
-        except sqlite3.IntegrityError as e:
-            if 'UNIQUE' in e.sqlite_errorname:
-                return Result(False, f'User {tg_username} is already in the whitelist')
-            logging.log(level=logging.ERROR, msg=f'sqlite3.IntegrityError:{e}')
-    return Result(True, None)
+    return await _with_db(_add_to_whitelist, tg_username, invite_code)

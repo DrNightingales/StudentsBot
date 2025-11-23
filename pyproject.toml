@@ -13,6 +13,7 @@ dependencies = [
     "flake8>=7.3.0",
     "passlib[bcrypt]>=1.7.4",
     "pytest>=9.0.1",
+    "pytest-async>=0.1.1",
 ]
 
 [dependency-groups]
@@ -33,3 +34,6 @@ inline-quotes = "single"
 [build-system]
 requires = ["uv_build>=0.9.11,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
