@@ -11,23 +11,23 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from constants import *
-from db.db import get_invited_useres, init_db, insert_registrarion_token, validate_token_request
-from students_bot.sync_utils import generate_invite_code, generate_token_fixed
+from students_crm.utilities.constants import ADMIN_ID, DB_PATH, REGISTRATION_URL_BASE, API_KEY
+from students_crm.db.db import get_invited_useres, init_db, insert_registrarion_token, validate_token_request
+from students_crm.students_bot.sync_utils import generate_invite_code, generate_token_fixed
 
 dp = Dispatcher()
 
 
 @dp.message(Command('whitelist'), F.from_user.id == ADMIN_ID)
 async def command_whitelist_handler(message: Message) -> None:
-    '''Add usernames from the admin message to the whitelist.
+    """Add usernames from the admin message to the whitelist.
 
     Args:
         message (Message): Admin command message.
 
     Returns:
         None
-    '''
+    """
     if message.text:
         usernames = message.text.split()
         if len(usernames) <= 1:
@@ -50,40 +50,44 @@ async def command_whitelist_handler(message: Message) -> None:
 
 @dp.message(Command('list_invited'), F.from_user.id == ADMIN_ID)
 async def command_list_invited_handler(message: Message) -> None:
-    '''Send reminders to invited users who still need to register.
+    """Send reminders to invited users who still need to register.
 
     Args:
         message (Message): Admin command message.
 
     Returns:
         None
-    '''
+    """
     users = await get_invited_useres()
     for user in users:
         await message.answer(
-            text=f'''
+            text=f"""
 @{user.username}, пожалуйста, зарегистрируйся с помощью команды <code>/register</code> в @drn_students_bot.
 
 Твой инвайт-код: <code>{user.invite_code}</code>
-'''
+"""
         )
 
 
 @dp.message(Command('register'))
 async def command_register_handler(message: Message) -> None:
-    '''Create a registration token for a Telegram user.
+    """Create a registration token for a Telegram user.
 
     Args:
         message (Message): User command message.
 
     Returns:
         None
-    '''
-    tg_username = message.from_user.username
-    tg_id = int(message.from_user.id)
-    invite_code_parts = message.text.strip().split(maxsplit=1)
+    """
+    if message.from_user and message.text:
+        tg_username = message.from_user.username
+        tg_id = int(message.from_user.id)
+        invite_code_parts = message.text.strip().split(maxsplit=1)
+    else:
+        await message.answer('Unknown error')
+        return
 
-    if len(invite_code_parts) == 1:
+    if len(invite_code_parts) == 1 or tg_username is None:
         await message.answer('usage: /register invite_code')
         return
 
@@ -103,19 +107,19 @@ async def command_register_handler(message: Message) -> None:
 
     link = f'{REGISTRATION_URL_BASE}?token={token}'
     await message.answer(
-        f'''
+        f"""
 Перейдите по сслыке, чтобы завершить регистрацию:
 {link}
-    '''
+    """
     )
 
 
 async def main():
-    '''Start the bot and begin polling.
+    """Start the bot and begin polling.
 
     Returns:
         None
-    '''
+    """
     bot = Bot(token=API_KEY, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     await init_db()
     await dp.start_polling(bot)

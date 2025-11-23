@@ -1,1 +1,0 @@
-from webform.main import app

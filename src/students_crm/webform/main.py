@@ -1,5 +1,3 @@
-import os
-import sys
 from typing import Any
 
 from fastapi import FastAPI, Form, Request
@@ -7,25 +5,24 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from asyncio import to_thread
 
-from constants import *
-from system_users import create_student_account
-from db.db import init_db, register_user
-from security import hash_password
-from validate import validate_password, validate_username
+from students_crm.utilities.security import hash_password
+from students_crm.utilities.validate import validate_password, validate_username
+from students_crm.db.db import register_user
+from students_crm.utilities.system_users import create_student_account
+from students_crm.utilities.constants import (
+    TEACHER_USERNAME,
+    DEBUG,
+    STUDENTS_GROUP,
+    STUDENT_DEFAULT_SHELL,
+    STUDENTS_HOME_BASE,
+)
 
 app = FastAPI(debug=DEBUG)
 templates = Jinja2Templates(directory='webform/templates')
 
-
-@app.on_event('startup')
-async def startup_event() -> None:
-    '''Initialise the database schema when the web application starts.'''
-    await init_db()
-
-
 @app.get('/register', response_class=HTMLResponse)
 async def register_get(request: Request, token: str) -> Any:
-    '''Render the registration form with a hidden token.
+    """Render the registration form with a hidden token.
 
     Args:
         request (Request): Incoming HTTP request.
@@ -33,7 +30,7 @@ async def register_get(request: Request, token: str) -> Any:
 
     Returns:
         TemplateResponse: HTML response for the registration form.
-    '''
+    """
     return templates.TemplateResponse(
         'register.html',
         {
@@ -53,7 +50,7 @@ async def register_post(
     password2: str = Form(...),
     token: str = Form(...),
 ):
-    '''Process registration submissions and persist new users.
+    """Process registration submissions and persist new users.
 
     Args:
         request (Request): Incoming HTTP, init_db request.
@@ -64,7 +61,7 @@ async def register_post(
 
     Returns:
         TemplateResponse: HTML response describing the outcome.
-    '''
+    """
     username = username.strip()
 
     error = None

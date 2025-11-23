@@ -6,12 +6,12 @@ from typing import Sequence
 
 
 def _run_command(command: Sequence[str], *, input_data: str | None = None) -> None:
-    '''Run a shell command and raise if it fails.
+    """Run a shell command and raise if it fails.
 
     Args:
         command (Sequence[str]): Command and arguments to execute.
         input_data (str | None): Optional stdin passed to the command.
-    '''
+    """
     subprocess.run(
         command,
         input=input_data,
@@ -21,12 +21,12 @@ def _run_command(command: Sequence[str], *, input_data: str | None = None) -> No
 
 
 def ensure_group_exists(group_name: str, *, use_sudo: bool = True) -> None:
-    '''Create the students group if it is missing.
+    """Create the students group if it is missing.
 
     Args:
         group_name (str): Name of the group to ensure exists.
         use_sudo (bool, optional): Prefix commands with sudo. Defaults to True.
-    '''
+    """
     try:
         grp.getgrnam(group_name)
         return
@@ -40,14 +40,14 @@ def ensure_group_exists(group_name: str, *, use_sudo: bool = True) -> None:
 
 
 def user_exists(username: str) -> bool:
-    '''Check whether a Linux user already exists.
+    """Check whether a Linux user already exists.
 
     Args:
         username (str): Username to look up.
 
     Returns:
         bool: True if the account exists.
-    '''
+    """
     try:
         pwd.getpwnam(username)
         return True
@@ -65,7 +65,7 @@ def create_student_account(
     default_shell: str = '/bin/bash',
     use_sudo: bool = True,
 ) -> None:
-    '''Create a Linux account for a student and configure access controls.
+    """Create a Linux account for a student and configure access controls.
 
     Args:
         username (str): Login to create.
@@ -75,7 +75,7 @@ def create_student_account(
         home_base (str): Base directory for student homes (e.g. /home).
         default_shell (str): Shell assigned to the account (e.g. /bin/bash).
         use_sudo (bool, optional): Prefix commands with sudo. Defaults to True.
-    '''
+    """
     ensure_group_exists(students_group, use_sudo=use_sudo)
 
     if not user_exists(teacher_username):
