@@ -1,9 +1,10 @@
 import aiosqlite as sql
 import logging
+import sqlite3
 from collections import namedtuple
 from dataclasses import dataclass
 from students_crm.db.schemas import db_schemas
-from students_crm.utilities.constants import DB_PATH
+from students_crm.utils.constants import DB_PATH
 
 Invite = namedtuple('Invite', ['username', 'invite_code'])
 
@@ -94,15 +95,17 @@ async def validate_token(token: str) -> tuple[str, int] | None:
     """
     async with sql.connect(DB_PATH) as db:
         db.row_factory = sql.Row
-        rows = tuple(await db.execute_fetchall(
-            """
+        rows = tuple(
+            await db.execute_fetchall(
+                """
             SELECT tg_username, tg_id
             FROM registration_tokens WHERE token = ?
               AND used = 0
               AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
             """,
-            (token,),
-        ))
+                (token,),
+            )
+        )
         if len(rows) > 0:
             row = rows[0]
             return (row['tg_username'], row['tg_id'])
@@ -144,14 +147,31 @@ async def validate_token_request(tg_username: str, invite_code: str) -> Result:
         Result: Validation outcome.
     """
     async with sql.connect(DB_PATH) as db:
-        rows = tuple(await db.execute_fetchall(
-            """
+        rows = tuple(
+            await db.execute_fetchall(
+                """
             SELECT used FROM whitelist WHERE (username = ? AND invite_code = ?)
             """,
-            (tg_username, invite_code),
-        ))
+                (tg_username, invite_code),
+            )
+        )
         if len(rows) == 0:
             return Result(False, 'Неверный пригласительный код или ваш пользователь не находится в белом списке.')
         if rows[0][0] != 0:
             return Result(False, 'Вы уже зарегестрированы.')
         return Result(True, 'Регистрация разрешена')
+
+
+async def add_to_whitelist(tg_username: str, invite_code: str) -> Result:
+    async with sql.connect(DB_PATH) as db:
+        try:
+            await db.execute(
+                'INSERT INTO whitelist (tg_username, invite_code) VALUES (?, ?)',
+                (tg_username, invite_code),
+            )
+            await db.commit()
+        except sqlite3.IntegrityError as e:
+            if 'UNIQUE' in e.sqlite_errorname:
+                return Result(False, f'User {tg_username} is already in the whitelist')
+            logging.log(level=logging.ERROR, msg=f'sqlite3.IntegrityError:{e}')
+    return Result(True, None)

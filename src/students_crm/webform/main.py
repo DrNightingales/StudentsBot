@@ -5,11 +5,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from asyncio import to_thread
 
-from students_crm.utilities.security import hash_password
-from students_crm.utilities.validate import validate_password, validate_username
-from students_crm.db.db import register_user
-from students_crm.utilities.system_users import create_student_account
-from students_crm.utilities.constants import (
+from students_crm.utils.security import hash_password
+from students_crm.utils.validate import validate_password, validate_username
+from students_crm.db.routines import register_user
+from students_crm.utils.system_users import create_student_account
+from students_crm.utils.constants import (
     TEACHER_USERNAME,
     DEBUG,
     STUDENTS_GROUP,

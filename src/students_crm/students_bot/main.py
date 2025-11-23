@@ -1,18 +1,22 @@
 import asyncio
 import logging
-import sqlite3
 import sys
 
 
-import aiosqlite as sql
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from students_crm.utilities.constants import ADMIN_ID, DB_PATH, REGISTRATION_URL_BASE, API_KEY
-from students_crm.db.db import get_invited_useres, init_db, insert_registrarion_token, validate_token_request
+from students_crm.utils.constants import ADMIN_ID, REGISTRATION_URL_BASE, API_KEY
+from students_crm.db.routines import (
+    get_invited_useres,
+    init_db,
+    insert_registrarion_token,
+    validate_token_request,
+    add_to_whitelist,
+)
 from students_crm.students_bot.sync_utils import generate_invite_code, generate_token_fixed
 
 dp = Dispatcher()
@@ -32,20 +36,11 @@ async def command_whitelist_handler(message: Message) -> None:
         usernames = message.text.split()
         if len(usernames) <= 1:
             await message.answer('Please provide at least one username to add to the whitelist')
-        for username in usernames[1:]:
+        for tg_username in usernames[1:]:
             invite_code = generate_invite_code()
-            async with sql.connect(DB_PATH) as db:
-                try:
-                    await db.execute(
-                        'INSERT INTO whitelist (username, invite_code) VALUES (?, ?)',
-                        (username, invite_code),
-                    )
-                    await db.commit()
-                except sqlite3.IntegrityError as exc:
-                    if 'UNIQUE' in exc.sqlite_errorname:
-                        await message.answer(f'User {username} is already in the whitelist')
-                        return
-                    logging.log(level=logging.ERROR, msg=f'sqlite3.IntegrityError:{exc}')
+            res = await add_to_whitelist(tg_username, invite_code)
+            if not res:
+                await message.answer(str(res))
 
 
 @dp.message(Command('list_invited'), F.from_user.id == ADMIN_ID)
