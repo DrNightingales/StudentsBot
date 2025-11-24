@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from students_crm.db.schemas import db_schemas
 from students_crm.utils.constants import DB_PATH
 
-Invite = namedtuple('Invite', ['username', 'invite_code'])
+Invite = namedtuple('Invite', ['tg_username', 'invite_code'])
 
 
 @dataclass
@@ -48,8 +48,8 @@ async def init_db():
 
 
 async def _get_invited_useres(db: sql.Connection) -> list[Invite]:
-    rows = await db.execute_fetchall('SELECT username, invite_code FROM whitelist WHERE used = 0')
-    return [Invite(username=row[0], invite_code=row[1]) for row in rows]
+    rows = await db.execute_fetchall('SELECT tg_username, invite_code FROM whitelist WHERE used = 0')
+    return [Invite(tg_username=row[0], invite_code=row[1]) for row in rows]
 
 
 async def get_invited_useres() -> list[Invite]:
@@ -80,7 +80,7 @@ async def _register_user(
                 """,
             (username, tg_id, tg_username, password_hash),
         )
-        await db.execute('UPDATE whitelist SET used = 1 WHERE username = ?', (tg_username,))
+        await db.execute('UPDATE whitelist SET used = 1 WHERE tg_username = ?', (tg_username,))
         await db.execute('DELETE FROM registration_tokens WHERE token = ?', (token,))
         await db.commit()
     except Exception as exc:
@@ -175,7 +175,7 @@ async def _validate_token_request(
     rows = tuple(
         await db.execute_fetchall(
             """
-            SELECT used FROM whitelist WHERE (username = ? AND invite_code = ?)
+            SELECT used FROM whitelist WHERE (tg_username = ? AND invite_code = ?)
             """,
             (tg_username, invite_code),
         )

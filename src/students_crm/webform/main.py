@@ -18,7 +18,7 @@ from students_crm.utils.constants import (
 )
 
 app = FastAPI(debug=DEBUG)
-templates = Jinja2Templates(directory='webform/templates')
+templates = Jinja2Templates(directory='src/students_crm/webform/templates')
 
 @app.get('/register', response_class=HTMLResponse)
 async def register_get(request: Request, token: str) -> Any:

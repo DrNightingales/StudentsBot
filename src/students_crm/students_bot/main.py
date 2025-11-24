@@ -57,7 +57,7 @@ async def command_list_invited_handler(message: Message) -> None:
     for user in users:
         await message.answer(
             text=f"""
-@{user.username}, пожалуйста, зарегистрируйся с помощью команды <code>/register</code> в @drn_students_bot.
+@{user.tg_username}, пожалуйста, зарегистрируйся с помощью команды <code>/register</code> в @drn_students_bot.
 
 Твой инвайт-код: <code>{user.invite_code}</code>
 """
