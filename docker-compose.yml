@@ -14,7 +14,7 @@ services:
     image: students-crm
     container_name: students-crm-web
     env_file: .env
-    command: ["uv", "run", "uvicorn", "webform.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uv", "run", "--env-file", ".env", "fastapi", "dev", "src/students_crm/webform/main.py", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     depends_on:

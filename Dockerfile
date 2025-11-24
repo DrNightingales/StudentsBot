@@ -10,15 +10,15 @@ RUN groupadd --system teachers && \
     useradd --system --create-home --gid studentsbot --shell /usr/sbin/nologin studentsbot
 
 WORKDIR /app
-COPY pyproject.toml uv.lock /app/
-RUN pip install --upgrade pip && pip install uv && uv sync
-
 COPY . /app
+RUN pip install --upgrade pip && pip install uv && uv sync
 RUN chown -R studentsbot:studentsbot /app && \
-    echo 'studentsbot ALL=(root) NOPASSWD: /usr/sbin/groupadd, /usr/sbin/useradd, /usr/bin/passwd, /usr/sbin/usermod, /usr/bin/chpasswd, /usr/bin/chmod, /usr/bin/setfacl, /usr/sbin/chpasswd' \
+    echo 'studentsbot ALL=(root) NOPASSWD: /usr/sbin/groupadd, /usr/sbin/useradd, /usr/bin/passwd,\
+     /usr/sbin/usermod, /usr/bin/chpasswd, /usr/bin/chmod, /usr/bin/setfacl, /usr/sbin/chpasswd' \
     > /etc/sudoers.d/studentsbot && chmod 440 /etc/sudoers.d/studentsbot
 
 ENV PYTHONUNBUFFERED=1
 USER studentsbot
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uv", "run", "python", "-m", "students_bot.main"]
+
+CMD ["uv", "run", "--env-file", ".env", "python", "-m", "students_crm.students_bot.main"]
