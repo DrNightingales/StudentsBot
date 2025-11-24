@@ -123,7 +123,7 @@ async def test__get_invited_useres_filters_used_entries(db: sql.Connection):
 
     invites = await r._get_invited_useres(db)
 
-    assert invites == [r.Invite(username='allowed_user', invite_code='CODE-1')]
+    assert invites == [r.Invite(tg_username='allowed_user', invite_code='CODE-1')]
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_get_invited_useres_wrapper_reads_from_db(db: sql.Connection):
 
     invites = await r.get_invited_useres()
 
-    assert invites == [r.Invite(username='wrapped_user', invite_code='WRAP')]
+    assert invites == [r.Invite(tg_username='wrapped_user', invite_code='WRAP')]
 
 
 @pytest.mark.asyncio
