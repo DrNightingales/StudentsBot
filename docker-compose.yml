@@ -5,7 +5,7 @@ services:
     build: .
     image: students-crm
     container_name: students-crm-bot
-    env_file: .env
+    env_file: .env.docker
     volumes:
       - db-data:/app/db
     restart: unless-stopped
@@ -13,7 +13,7 @@ services:
   web:
     image: students-crm
     container_name: students-crm-web
-    env_file: .env
+    env_file: .env.docker
     command: ["uv", "run", "uvicorn", "students_crm.webform.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
@@ -21,6 +21,31 @@ services:
       - bot
     volumes:
       - db-data:/app/db
+    restart: unless-stopped
+
+  db-inspector:
+    image: coleifer/sqlite-web
+    container_name: students-crm-db-inspector
+    profiles:
+      - debug
+    env_file: .env.docker
+    command: ["sqlite_web", "/app/db/students.db", "--host", "0.0.0.0", "--port", "8081", "--no-browser"]
+    volumes:
+      - db-data:/app/db
+    restart: unless-stopped
+
+  db-proxy:
+    image: caddy:2
+    container_name: students-crm-db-proxy
+    profiles:
+      - debug
+    env_file: .env.docker
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,Z
+    depends_on:
+      - db-inspector
     restart: unless-stopped
 
 volumes:

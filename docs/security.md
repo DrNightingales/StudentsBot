@@ -8,7 +8,7 @@ This project handles Telegram invite tokens, password hashes, and optional Linux
 - Rotate Telegram bot tokens and DB inspector credentials if they were ever committed, shared, or copied into built images.
 - Keep `DEBUG=false` by default. Enable debug only for local development.
 - Serve the registration form only over HTTPS in production.
-- Keep DB inspection disabled unless you are intentionally running local debug tooling.
+- Keep DB inspection behind the Docker `debug` profile, localhost binding, and authenticated access.
 - Run the account provisioner with the least privileges practical for your host. Do not expose the queue directory to untrusted users.
 
 ## Current Hardening

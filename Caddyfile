@@ -1,0 +1,6 @@
+:8081 {
+    basicauth {
+        {$DB_INSPECTOR_USER} {$DB_INSPECTOR_PASSWORD_HASH}
+    }
+    reverse_proxy db-inspector:8081
+}
