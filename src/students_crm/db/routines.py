@@ -1,26 +1,9 @@
 import aiosqlite as sql
 import logging
 import sqlite3
-from collections import namedtuple
-from dataclasses import dataclass
+from students_crm.db.models import Invite, Result
 from students_crm.db.schemas import db_schemas
 from students_crm.utils.constants import DB_PATH
-
-Invite = namedtuple('Invite', ['tg_username', 'invite_code'])
-
-
-@dataclass
-class Result:
-    """Represents the outcome of an operation."""
-
-    ok: bool
-    message: str | None
-
-    def __bool__(self):
-        return self.ok
-
-    def __str__(self):
-        return self.message
 
 
 async def _with_db(fn, *args, **kwargs):
