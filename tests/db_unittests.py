@@ -54,6 +54,23 @@ async def _insert_token(
     await db_conn.commit()
 
 
+async def _insert_user(
+    db_conn: sql.Connection,
+    username: str,
+    tg_id: int,
+    tg_username: str,
+    password_hash: str = 'hash',
+):
+    await db_conn.execute(
+        """
+        INSERT INTO users (username, tg_id, tg_username, password_hash)
+        VALUES (?, ?, ?, ?)
+        """,
+        (username, tg_id, tg_username, password_hash),
+    )
+    await db_conn.commit()
+
+
 @pytest_asyncio.fixture
 async def db(tmp_path, monkeypatch):
     db_file = tmp_path / 'mock_students.db'
@@ -84,7 +101,15 @@ async def test__with_db_runs_callable(db: sql.Connection):
 
 @pytest.mark.asyncio
 async def test__init_db_creates_missing_tables(db: sql.Connection):
-    for table in ('whitelist', 'users', 'registration_tokens'):
+    for table in (
+        'homework_submission_attachments',
+        'homework_submissions',
+        'homework_assignment_attachments',
+        'homework_assignments',
+        'registration_tokens',
+        'whitelist',
+        'users',
+    ):
         await db.execute(f'DROP TABLE IF EXISTS {table}')
     await db.commit()
 
@@ -96,12 +121,28 @@ async def test__init_db_creates_missing_tables(db: sql.Connection):
             "SELECT name FROM sqlite_master WHERE type='table' AND name!='sqlite_sequence'"
         )
     }
-    assert {'whitelist', 'users', 'registration_tokens'}.issubset(tables)
+    assert {
+        'whitelist',
+        'users',
+        'registration_tokens',
+        'homework_assignments',
+        'homework_assignment_attachments',
+        'homework_submissions',
+        'homework_submission_attachments',
+    }.issubset(tables)
 
 
 @pytest.mark.asyncio
 async def test_init_db_wrapper_uses_helper(db: sql.Connection):
-    for table in ('whitelist', 'users', 'registration_tokens'):
+    for table in (
+        'homework_submission_attachments',
+        'homework_submissions',
+        'homework_assignment_attachments',
+        'homework_assignments',
+        'registration_tokens',
+        'whitelist',
+        'users',
+    ):
         await db.execute(f'DROP TABLE IF EXISTS {table}')
     await db.commit()
 
@@ -113,7 +154,15 @@ async def test_init_db_wrapper_uses_helper(db: sql.Connection):
             "SELECT name FROM sqlite_master WHERE type='table' AND name!='sqlite_sequence'"
         )
     }
-    assert {'whitelist', 'users', 'registration_tokens'}.issubset(tables)
+    assert {
+        'whitelist',
+        'users',
+        'registration_tokens',
+        'homework_assignments',
+        'homework_assignment_attachments',
+        'homework_submissions',
+        'homework_submission_attachments',
+    }.issubset(tables)
 
 
 @pytest.mark.asyncio
@@ -151,7 +200,7 @@ async def test__add_to_whitelist_rejects_duplicates(db: sql.Connection):
     result = await r._add_to_whitelist(db, 'duplicate_user', 'CODE-4')
 
     assert result.ok is False
-    assert 'whitelist' in (result.message or '')
+    assert 'белом списке' in (result.message or '')
 
 
 @pytest.mark.asyncio
@@ -255,3 +304,125 @@ async def test_register_user_wrapper(db: sql.Connection):
 
     users = await db.execute_fetchall('SELECT username FROM users WHERE username = ?', ('wrapped_app_user',))
     assert users == [('wrapped_app_user',)]
+
+
+@pytest.mark.asyncio
+async def test_save_homework_inserts_assignment_and_attachments(db: sql.Connection):
+    await _insert_user(db, 'hw_user', 7001, 'hw_tg')
+    attachments = [('file-1', 'photo'), ('file-2', 'document')]
+
+    result = await r.save_homework(
+        7001,
+        'Algebra',
+        'Solve the tasks',
+        '2025-01-01T10:00:00',
+        '2025-01-02T10:00:00',
+        attachments,
+    )
+
+    assert result.ok is True
+    assignment_id = result.data
+    rows = await db.execute_fetchall(
+        """
+        SELECT student_tg_id, title, text, soft_deadline, hard_deadline, status
+        FROM homework_assignments WHERE id = ?
+        """,
+        (assignment_id,),
+    )
+    assert rows == [
+        (7001, 'Algebra', 'Solve the tasks', '2025-01-01T10:00:00', '2025-01-02T10:00:00', 'Не решено')
+    ]
+
+    attach_rows = await db.execute_fetchall(
+        """
+        SELECT file_id, file_type, position
+        FROM homework_assignment_attachments
+        WHERE assignment_id = ?
+        ORDER BY position
+        """,
+        (assignment_id,),
+    )
+    assert attach_rows == [('file-1', 'photo', 0), ('file-2', 'document', 1)]
+
+
+@pytest.mark.asyncio
+async def test_save_homework_allows_empty_attachments(db: sql.Connection):
+    await _insert_user(db, 'hw_no_attach', 7002, 'hw_tg_no_attach')
+
+    result = await r.save_homework(
+        7002,
+        'Reading',
+        'Read the chapter',
+        '2025-01-03T10:00:00',
+        '2025-01-04T10:00:00',
+    )
+
+    assert result.ok is True
+    assignment_id = result.data
+    attach_rows = await db.execute_fetchall(
+        """
+        SELECT COUNT(*)
+        FROM homework_assignment_attachments
+        WHERE assignment_id = ?
+        """,
+        (assignment_id,),
+    )
+    assert attach_rows == [(0,)]
+
+
+@pytest.mark.asyncio
+async def test_save_homework_submission_inserts_and_updates_status(db: sql.Connection):
+    await _insert_user(db, 'hw_submit', 8001, 'hw_tg_submit')
+
+    assignment = await r.save_homework(
+        8001,
+        'Exercises',
+        'Complete exercises',
+        '2025-02-01T10:00:00',
+        '2025-02-02T10:00:00',
+    )
+    assignment_id = assignment.data
+    submission_files = [('sub-1', 'photo'), ('sub-2', 'document')]
+
+    result = await r.save_homework_submission(assignment_id, 8001, submission_files, text='Done')
+
+    assert result.ok is True
+    submission_id = result.data
+    submission_rows = await db.execute_fetchall(
+        """
+        SELECT assignment_id, student_tg_id, text
+        FROM homework_submissions WHERE id = ?
+        """,
+        (submission_id,),
+    )
+    assert submission_rows == [(assignment_id, 8001, 'Done')]
+
+    submission_attachments = await db.execute_fetchall(
+        """
+        SELECT file_id, file_type, position
+        FROM homework_submission_attachments
+        WHERE submission_id = ?
+        ORDER BY position
+        """,
+        (submission_id,),
+    )
+    assert submission_attachments == [('sub-1', 'photo', 0), ('sub-2', 'document', 1)]
+
+    status_row = await db.execute_fetchall(
+        'SELECT status FROM homework_assignments WHERE id = ?',
+        (assignment_id,),
+    )
+    assert status_row == [('На проверке',)]
+
+
+@pytest.mark.asyncio
+async def test_get_tg_user_id_helpers_return_result(db: sql.Connection):
+    await _insert_user(db, 'lookup_user', 9001, 'lookup_tg')
+
+    by_tg = await r.get_tg_user_id_by_tg_username('lookup_tg')
+    by_username = await r.get_tg_user_id_by_username('lookup_user')
+
+    assert by_tg.ok is True
+    assert by_tg.data == 9001
+    assert by_username.ok is True
+    assert by_username.data == 9001
