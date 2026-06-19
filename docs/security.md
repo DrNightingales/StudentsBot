@@ -19,11 +19,12 @@ This project handles Telegram invite tokens, password hashes, and optional Linux
 - `DEBUG` defaults to false.
 - Registration tokens and invite-code reminders are only issued in private Telegram chats.
 - Registration token requests are rate-limited per Telegram user in memory.
+- Registration pages validate tokens before rendering or running bcrypt password hashing.
+- Registration responses send `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`.
+- Web registration submissions are rate-limited per client IP in memory.
 
 ## Known Follow-Ups
 
-- Validate registration tokens before expensive password hashing.
-- Add no-referrer/no-store headers to registration pages.
 - Strengthen password validation for Linux account creation and bcrypt limits.
 - Store registration token hashes instead of plaintext token values.
 - Move rate limiting to a shared backend if running multiple web/bot processes.
