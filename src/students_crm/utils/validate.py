@@ -1,6 +1,8 @@
 import re
 
 USERNAME_RE = re.compile('^[a-zA-Z][a-zA-Z0-9_]{2,31}$')
+PASSWORD_MIN_LENGTH = 10
+BCRYPT_MAX_PASSWORD_BYTES = 72
 
 
 def validate_username(username: str) -> str | None:
@@ -29,7 +31,12 @@ def validate_password(password: str) -> str | None:
     Returns:
         str | None: Error message if invalid, otherwise None.
     """
-    # TODO: add security validation
-    if len(password) < 6:
-        return 'Пароль должен содержать минимум 6 символов.'
+    if len(password) < PASSWORD_MIN_LENGTH:
+        return f'Пароль должен содержать минимум {PASSWORD_MIN_LENGTH} символов.'
+    if len(password.encode('utf-8')) > BCRYPT_MAX_PASSWORD_BYTES:
+        return f'Пароль должен быть не длиннее {BCRYPT_MAX_PASSWORD_BYTES} байт.'
+    if not any(char.isdigit() for char in password):
+        return 'Пароль должен содержать минимум одну цифру.'
+    if not any(char.isupper() for char in password):
+        return 'Пароль должен содержать минимум одну заглавную букву.'
     return None

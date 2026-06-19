@@ -64,17 +64,19 @@ def create_student_account(
     home_base: str = '/home',
     default_shell: str = '/bin/bash',
     use_sudo: bool = True,
+    password_is_hashed: bool = False,
 ) -> None:
     """Create a Linux account for a student and configure access controls.
 
     Args:
         username (str): Login to create.
-        password (str): Plaintext password that will be hashed by the OS.
+        password (str): Plaintext password or a pre-hashed value when password_is_hashed is True.
         teacher_username (str): Account that must retain access to every student home.
         students_group (str): Shared Unix group for all students.
         home_base (str): Base directory for student homes (e.g. /home).
         default_shell (str): Shell assigned to the account (e.g. /bin/bash).
         use_sudo (bool, optional): Prefix commands with sudo. Defaults to True.
+        password_is_hashed (bool, optional): Treat password as a hash and pass it to chpasswd -e.
     """
     ensure_group_exists(students_group, use_sudo=use_sudo)
 
@@ -101,6 +103,8 @@ def create_student_account(
     _run_command(create_cmd)
 
     password_cmd = ['chpasswd']
+    if password_is_hashed:
+        password_cmd.append('-e')
     if use_sudo:
         password_cmd.insert(0, 'sudo')
     _run_command(password_cmd, input_data=f'{username}:{password}')

@@ -22,10 +22,11 @@ This project handles Telegram invite tokens, password hashes, and optional Linux
 - Registration pages validate tokens before rendering or running bcrypt password hashing.
 - Registration responses send `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`.
 - Web registration submissions are rate-limited per client IP in memory.
+- Password validation enforces a stronger minimum length, digit, uppercase letter, and bcrypt's 72-byte input limit.
+- Account creation can pass pre-hashed passwords to `chpasswd -e`, avoiding plaintext handoff in provisioning workers.
 
 ## Known Follow-Ups
 
-- Strengthen password validation for Linux account creation and bcrypt limits.
 - Store registration token hashes instead of plaintext token values.
 - Move rate limiting to a shared backend if running multiple web/bot processes.
 - Restrict trusted proxy headers to known proxy IPs before enabling `TRUST_PROXY_HEADERS`.
