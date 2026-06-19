@@ -15,6 +15,18 @@ def _parse_bool(value: str | None, default: bool) -> bool:
     return default
 
 
+def _parse_int(value: str | None, default: int) -> int:
+    if value is None:
+        return default
+    cleaned = value.strip()
+    if not cleaned:
+        return default
+    try:
+        return int(cleaned)
+    except ValueError:
+        return default
+
+
 API_KEY = environ['API_KEY']
 ADMIN_ID = int(environ['ADMIN_ID'])
 DB_PATH = environ['DB_PATH']
@@ -24,3 +36,5 @@ STUDENTS_GROUP = environ.get('STUDENTS_GROUP', 'students')
 STUDENT_DEFAULT_SHELL = environ.get('STUDENT_DEFAULT_SHELL', '/bin/bash')
 STUDENTS_HOME_BASE = environ.get('STUDENTS_HOME_BASE', '/home')
 DEBUG = _parse_bool(environ.get('DEBUG'), False)
+BOT_TOKEN_RATE_LIMIT_COUNT = _parse_int(environ.get('BOT_TOKEN_RATE_LIMIT_COUNT'), 3)
+BOT_TOKEN_RATE_LIMIT_WINDOW = _parse_int(environ.get('BOT_TOKEN_RATE_LIMIT_WINDOW'), 300)

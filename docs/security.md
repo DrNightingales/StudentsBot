@@ -17,10 +17,11 @@ This project handles Telegram invite tokens, password hashes, and optional Linux
 - Docker commands rely on Compose/runtime environment injection instead of loading env files inside the image command.
 - The web container uses `uvicorn` instead of the FastAPI development server.
 - `DEBUG` defaults to false.
+- Registration tokens and invite-code reminders are only issued in private Telegram chats.
+- Registration token requests are rate-limited per Telegram user in memory.
 
 ## Known Follow-Ups
 
-- Restrict registration token delivery to private Telegram chats.
 - Validate registration tokens before expensive password hashing.
 - Add no-referrer/no-store headers to registration pages.
 - Strengthen password validation for Linux account creation and bcrypt limits.

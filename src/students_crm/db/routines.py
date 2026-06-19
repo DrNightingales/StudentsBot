@@ -47,18 +47,28 @@ async def init_db():
     return await _with_db(_init_db)
 
 
-async def _get_invited_useres(db: sql.Connection) -> list[Invite]:
+async def _get_invited_users(db: sql.Connection) -> list[Invite]:
     rows = await db.execute_fetchall('SELECT tg_username, invite_code FROM whitelist WHERE used = 0')
     return [Invite(tg_username=row[0], invite_code=row[1]) for row in rows]
 
 
-async def get_invited_useres() -> list[Invite]:
+async def get_invited_users() -> list[Invite]:
     """Fetch whitelist entries whose invite codes are unused.
 
     Returns:
         list[Invite]: Pending users with their invite codes.
     """
-    return await _with_db(_get_invited_useres)
+    return await _with_db(_get_invited_users)
+
+
+async def _get_invited_useres(db: sql.Connection) -> list[Invite]:
+    """Deprecated misspelled alias for `_get_invited_users`."""
+    return await _get_invited_users(db)
+
+
+async def get_invited_useres() -> list[Invite]:
+    """Deprecated misspelled alias for `get_invited_users`."""
+    return await get_invited_users()
 
 
 async def _register_user(
@@ -134,7 +144,7 @@ async def validate_token(token: str) -> tuple[str, int] | None:
     return await _with_db(_validate_token, token)
 
 
-async def _insert_registrarion_token(
+async def _insert_registration_token(
     db: sql.Connection,
     tg_username: str,
     tg_id: int,
@@ -152,7 +162,7 @@ async def _insert_registrarion_token(
     await db.commit()
 
 
-async def insert_registrarion_token(tg_username: str, tg_id: int, token: str, grace_period: int = 600):
+async def insert_registration_token(tg_username: str, tg_id: int, token: str, grace_period: int = 600):
     """Store a registration token for a Telegram user.
 
     Args:
@@ -164,7 +174,23 @@ async def insert_registrarion_token(tg_username: str, tg_id: int, token: str, gr
     Returns:
         None
     """
-    return await _with_db(_insert_registrarion_token, tg_username, tg_id, token, grace_period)
+    return await _with_db(_insert_registration_token, tg_username, tg_id, token, grace_period)
+
+
+async def _insert_registrarion_token(
+    db: sql.Connection,
+    tg_username: str,
+    tg_id: int,
+    token: str,
+    grace_period: int = 600,
+):
+    """Deprecated misspelled alias for `_insert_registration_token`."""
+    return await _insert_registration_token(db, tg_username, tg_id, token, grace_period)
+
+
+async def insert_registrarion_token(tg_username: str, tg_id: int, token: str, grace_period: int = 600):
+    """Deprecated misspelled alias for `insert_registration_token`."""
+    return await insert_registration_token(tg_username, tg_id, token, grace_period)
 
 
 async def _validate_token_request(
