@@ -24,6 +24,8 @@ This project handles Telegram invite tokens, password hashes, and optional Linux
 - Web registration submissions are rate-limited per client IP in memory.
 - Password validation enforces a stronger minimum length, digit, uppercase letter, and bcrypt's 72-byte input limit.
 - Account creation can pass pre-hashed passwords to `chpasswd -e`, avoiding plaintext handoff in provisioning workers.
+- Successful web registration queues account provisioning requests instead of creating shell accounts inline.
+- Provisioning queue entries are written with `0600` file permissions under a `0700` queue directory, and symlinked requests are ignored.
 
 ## Known Follow-Ups
 

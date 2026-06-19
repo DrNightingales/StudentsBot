@@ -1,26 +1,25 @@
-from asyncio import to_thread
-from pathlib import Path
 from typing import Any
+from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from asyncio import to_thread
+import logging
 
-from students_crm.db.routines import register_user, validate_token
+from students_crm.utils.security import hash_password
+from students_crm.utils.validate import validate_password, validate_username
+from students_crm.db.routines import register_user, upsert_account_provisioning, validate_token
+from students_crm.provisioner import enqueue_account_request
 from students_crm.utils.constants import (
     DEBUG,
+    PROVISIONING_STATUS_FAILED,
+    PROVISIONING_STATUS_QUEUED,
     REGISTRATION_RATE_LIMIT_COUNT,
     REGISTRATION_RATE_LIMIT_WINDOW,
-    STUDENT_DEFAULT_SHELL,
-    STUDENTS_GROUP,
-    STUDENTS_HOME_BASE,
-    TEACHER_USERNAME,
     TRUST_PROXY_HEADERS,
 )
 from students_crm.utils.rate_limit import RateLimiter
-from students_crm.utils.security import hash_password
-from students_crm.utils.system_users import create_student_account
-from students_crm.utils.validate import validate_password, validate_username
 
 app = FastAPI(debug=DEBUG)
 templates = Jinja2Templates(directory=str(Path(__file__).with_name('templates')))
@@ -114,12 +113,8 @@ async def register_post(
 
     client_ip = _client_ip(request)
     if not registration_limiter.allow(client_ip):
-        return _render_registration(
-            request,
-            token=token,
-            error='Слишком много попыток. Попробуйте позже.',
-            success=success,
-        )
+        error = 'Слишком много попыток. Попробуйте позже.'
+        return _render_registration(request, token=token, error=error, success=success)
 
     if not all((username, password, password2, token)):
         error = 'Пожалуйста, заполните все поля.'
@@ -137,14 +132,16 @@ async def register_post(
         error = res.message
         success = res.ok
         if success:
-            await to_thread(
-                create_student_account,
-                username,
-                password,
-                teacher_username=TEACHER_USERNAME,
-                students_group=STUDENTS_GROUP,
-                home_base=STUDENTS_HOME_BASE,
-                default_shell=STUDENT_DEFAULT_SHELL,
-            )
+            await upsert_account_provisioning(username, PROVISIONING_STATUS_QUEUED, None)
+            try:
+                await to_thread(
+                    enqueue_account_request,
+                    username,
+                    password_hash,
+                )
+            except Exception:
+                logging.exception('Failed to enqueue account request for %s', username)
+                error = 'Регистрация завершена, но не удалось поставить создание учетной записи в очередь.'
+                await upsert_account_provisioning(username, PROVISIONING_STATUS_FAILED, error)
 
     return _render_registration(request, token=token, error=error, success=success)

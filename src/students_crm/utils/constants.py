@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from os import environ
+from pathlib import Path
 
 load_dotenv()
 
@@ -36,8 +37,16 @@ STUDENTS_GROUP = environ.get('STUDENTS_GROUP', 'students')
 STUDENT_DEFAULT_SHELL = environ.get('STUDENT_DEFAULT_SHELL', '/bin/bash')
 STUDENTS_HOME_BASE = environ.get('STUDENTS_HOME_BASE', '/home')
 DEBUG = _parse_bool(environ.get('DEBUG'), False)
+ACCOUNT_REQUESTS_DIR = environ.get(
+    'ACCOUNT_REQUESTS_DIR',
+    str(Path(DB_PATH).parent / 'account_requests'),
+)
 REGISTRATION_RATE_LIMIT_COUNT = _parse_int(environ.get('REGISTRATION_RATE_LIMIT_COUNT'), 5)
 REGISTRATION_RATE_LIMIT_WINDOW = _parse_int(environ.get('REGISTRATION_RATE_LIMIT_WINDOW'), 60)
 BOT_TOKEN_RATE_LIMIT_COUNT = _parse_int(environ.get('BOT_TOKEN_RATE_LIMIT_COUNT'), 3)
 BOT_TOKEN_RATE_LIMIT_WINDOW = _parse_int(environ.get('BOT_TOKEN_RATE_LIMIT_WINDOW'), 300)
 TRUST_PROXY_HEADERS = _parse_bool(environ.get('TRUST_PROXY_HEADERS'), False)
+PROVISIONING_STATUS_QUEUED = 'queued'
+PROVISIONING_STATUS_PROCESSING = 'processing'
+PROVISIONING_STATUS_COMPLETED = 'completed'
+PROVISIONING_STATUS_FAILED = 'failed'
