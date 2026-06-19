@@ -2,6 +2,19 @@ from dotenv import load_dotenv
 from os import environ
 
 load_dotenv()
+
+
+def _parse_bool(value: str | None, default: bool) -> bool:
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {'1', 'true', 'yes', 'on'}:
+        return True
+    if normalized in {'0', 'false', 'no', 'off'}:
+        return False
+    return default
+
+
 API_KEY = environ['API_KEY']
 ADMIN_ID = int(environ['ADMIN_ID'])
 DB_PATH = environ['DB_PATH']
@@ -10,4 +23,4 @@ TEACHER_USERNAME = environ['TEACHER_USERNAME']
 STUDENTS_GROUP = environ.get('STUDENTS_GROUP', 'students')
 STUDENT_DEFAULT_SHELL = environ.get('STUDENT_DEFAULT_SHELL', '/bin/bash')
 STUDENTS_HOME_BASE = environ.get('STUDENTS_HOME_BASE', '/home')
-DEBUG = bool(environ.get('DEBUG', True))
+DEBUG = _parse_bool(environ.get('DEBUG'), False)

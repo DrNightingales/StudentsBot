@@ -11,7 +11,18 @@ wheels/
 
 # Local configuration and data
 .env
+.env.*
+!.env.example
+!.env.*.example
 *.db
+*.sqlite
+*.sqlite3
+*.log
+students_bot.log
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
 
 # Visual studio artifacts
 .vscode/

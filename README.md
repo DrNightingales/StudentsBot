@@ -17,6 +17,7 @@ A Telegram-driven invite workflow for managing student registrations. The `stude
   - `STUDENTS_GROUP` – shared Unix group for students (default: `students`)
   - `STUDENTS_HOME_BASE` – base path that will contain student home directories (default: `/home`)
   - `STUDENT_DEFAULT_SHELL` – shell assigned to student accounts (default: `/bin/bash`)
+  - `DEBUG` – set to `true`/`false` to toggle debug behavior (default: `false`; keep false in production)
 
 ## Setup & Run with uv
 
@@ -28,11 +29,11 @@ A Telegram-driven invite workflow for managing student registrations. The `stude
    ```
 3. Start the Telegram bot:
    ```bash
-   uv run python students_bot/main.py
+   uv run python -m students_crm.students_bot.main
    ```
 4. In another terminal, launch the FastAPI web form (served by uvicorn via FastAPI's standard extra):
    ```bash
-   uv run uvicorn webform.main:app --host 0.0.0.0 --port 8000
+   uv run uvicorn students_crm.webform.main:app --host 0.0.0.0 --port 8000
    ```
 
 ## Setup & Run with pip
@@ -48,11 +49,13 @@ A Telegram-driven invite workflow for managing student registrations. The `stude
    ```
 3. Start the Telegram bot:
    ```bash
-   python students_bot/main.py
+   python -m students_crm.students_bot.main
    ```
 4. Start the FastAPI web form in a separate shell:
    ```bash
-   uvicorn webform.main:app --host 0.0.0.0 --port 8000
+   uvicorn students_crm.webform.main:app --host 0.0.0.0 --port 8000
    ```
 
 With both processes running, admins can whitelist users via Telegram, users can request tokens through the bot, and then finish registration through the `/register` web form.
+
+See `docs/security.md` for the current hardening checklist and known security follow-ups.

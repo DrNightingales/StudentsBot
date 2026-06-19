@@ -21,4 +21,4 @@ ENV PYTHONUNBUFFERED=1
 USER studentsbot
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-CMD ["uv", "run", "--env-file", ".env", "python", "-m", "students_crm.students_bot.main"]
+CMD ["uv", "run", "python", "-m", "students_crm.students_bot.main"]
